@@ -1,8 +1,9 @@
 import { cart, deleteFromCart,updateDeliveryOptionId} from "../../data/card.js";
-import { products } from "../../data/products.js";
+import { getProduct } from "../../data/products.js";
 import  dayjs from "https://unpkg.com/dayjs@1.11.10/esm/index.js"
-import { deliveryOptions } from "../../data/deliveryOptions.js";
-
+import { deliveryOptions,getDeliveryOptionId } from "../../data/deliveryOptions.js";
+import { formatCurrency } from "../../utils/money.js";
+import { paymentSummary } from "./paymentSummary.js";
 
 //import { updateCartQuantity } from "./amazon.js";
 
@@ -10,22 +11,12 @@ export function renderOrderSummary(){
   let summaryHtml='';
 cart.forEach((cartItem)=>{
     const productId=cartItem.id;
-    let matchingProduct;
+    const matchingProduct=getProduct(productId);
     
-    products.forEach((product)=>{
-        if(product.id===productId){
-            matchingProduct=product;
-        }
-        
-    });
-    const deliveryoption=cartItem.deliveryOptionsId;
-    let deliveryop;
-    deliveryOptions.forEach((option)=>{
-      if(option.id===deliveryoption){
-        deliveryop=option;
-      }
 
-    });
+    const deliveryoption=cartItem.deliveryOptionsId;
+    const deliveryop=getDeliveryOptionId(deliveryoption);
+
     const today=dayjs();
     const deliveryDate=today.add(deliveryop.days , 'days');
     const deliveryDateStr=deliveryDate.format('dddd, MMMM  D');
@@ -47,9 +38,9 @@ cart.forEach((cartItem)=>{
                 <div class="product-name">
                   ${matchingProduct.name}
                 </div>
-                <div class="product-price">$ ${(matchingProduct.priceCents / 100 ).toFixed(2)}</div>
+                <div class="product-price">$ ${formatCurrency(matchingProduct.priceCents)}</div>
                 <div class="product-quantity">
-                  <span> Quantity: <span class="quantity-label">${matchingProduct.quantity}</span> </span>
+                  <span> Quantity: <span class="quantity-label">${cartItem.quantity}</span> </span>
                   <span class="update-quantity-link link-primary">
                     Update
                   </span>
@@ -78,7 +69,7 @@ function deliveryOptionsHTML(matchingProduct,cart){
       const today=dayjs();
       const deliveryDate=today.add(deliveryOption.days , 'days');
       const deliveryDateStr=deliveryDate.format('dddd, MMMM  D');
-      const price = deliveryOption.priceCents === 0 ? "FREE" : `$${(deliveryOption.priceCents/100).toFixed(2)}`;
+      const price = deliveryOption.priceCents === 0 ? "FREE" : `$${formatCurrency(deliveryOption.priceCents)}`;
       const isChecked= deliveryOption.id===cart.deliveryOptionsId;
       html+= `
       <div class="delivery-option delivery-js" data-product-id= "${matchingProduct.id}"
@@ -103,6 +94,7 @@ function deliveryOptionsHTML(matchingProduct,cart){
           const productId=button.dataset.productId;
           deleteFromCart(productId);
           document.querySelector(`.js-cart-item-${productId}`).remove();
+          paymentSummary();
         }) ;
       })
 document.querySelectorAll('.delivery-js').forEach((element)=>{
@@ -110,6 +102,7 @@ document.querySelectorAll('.delivery-js').forEach((element)=>{
     const {productId,deliveryOptionId}= element.dataset;
     updateDeliveryOptionId(productId,deliveryOptionId);
     renderOrderSummary();
+    paymentSummary();
     
   });
 });
